@@ -1,5 +1,6 @@
 ﻿"""
-The /analyze endpoint. MRZ checksum is now REAL (role 4's module).
+The /analyze endpoint. MRZ checksum is REAL (role 4's module).
+Risk scoring now uses the real, tested risk_aggregator.
 ELA and field cross-verification are still DUMMY -- swap them in
 the same way once roles 5 and 6 hand off their functions.
 """
@@ -11,6 +12,7 @@ import uuid
 
 from app.models.schemas import AnalyzeResponse
 from app.modules.mrz_checksum import run_mrz_check
+from app.modules.risk_aggregator import aggregate
 
 router = APIRouter()
 
@@ -29,39 +31,40 @@ async def analyze_document(file: UploadFile = File(...)):
 
     # ---- REAL: MRZ checksum validation ----
     mrz_result = run_mrz_check(saved_path)
+    mrz_passed = mrz_result.get("mrz_checksum_passed", False)
 
     mrz_check_entry = {
         "name": "MRZ Checksum Validation",
-        "passed": mrz_result.get("mrz_checksum_passed", False),
+        "passed": mrz_passed,
         "detail": mrz_result.get("checks", mrz_result.get("message", "No MRZ detected")),
     }
 
     # ---- DUMMY: still waiting on roles 5 and 6 ----
+    ela_passed = True  # placeholder -- role 5 will return a real bool
     ela_check_entry = {
         "name": "Error Level Analysis (Tamper Detection)",
-        "passed": True,
+        "passed": ela_passed,
         "detail": "Dummy data — waiting on Role 5's module",
     }
 
+    crossverify_passed = True  # placeholder -- role 6 will return real bool or None
     crossverify_check_entry = {
         "name": "Field Cross-Verification",
-        "passed": True,
+        "passed": crossverify_passed,
         "detail": "Dummy data — waiting on Role 6's module",
     }
 
+    # ---- REAL: risk aggregation ----
+    risk_result = aggregate(
+        mrz_passed=mrz_passed,
+        ela_passed=ela_passed,
+        crossverify_passed=crossverify_passed,
+    )
+
     all_checks = [mrz_check_entry, ela_check_entry, crossverify_check_entry]
 
-    # simple scoring for now: MRZ failing alone pushes to Suspicious
-    # (final weighted logic comes from the risk_aggregator once all 3 are real)
-    if not mrz_check_entry["passed"]:
-        verdict = "Suspicious"
-        risk_score = 0.5
-    else:
-        verdict = "Genuine"
-        risk_score = 0.1
-
     return {
-        "verdict": verdict,
-        "risk_score": risk_score,
+        "verdict": risk_result["verdict"],
+        "risk_score": risk_result["risk_score"],
         "checks": all_checks,
     }
