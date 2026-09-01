@@ -26,8 +26,8 @@ export default function AnalysisLoader() {
   }, []);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6">
-      <p className="text-sm font-medium text-navy-900 mb-4">Forensic Analysis in Progress</p>
+    <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-[#c5b293]/40 p-6 shadow-[0_8px_30px_rgba(108,90,70,0.07)]">
+      <p className="text-sm font-semibold text-[#6c5a46] mb-4">Forensic Analysis in Progress</p>
       <ul className="space-y-3">
         {STAGES.map((stage, i) => {
           const done = i < activeIndex;
@@ -35,12 +35,12 @@ export default function AnalysisLoader() {
           return (
             <li key={stage} className="flex items-center gap-3 text-sm">
               <span
-                className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-xs
-                  ${done ? "bg-green-500 text-white" : active ? "bg-cyan-500 text-white animate-pulse" : "bg-slate-200 text-slate-400"}`}
+                className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold shadow-sm transition-all
+                  ${done ? "bg-[#6c5a46] text-[#f6f1e6]" : active ? "bg-gradient-to-r from-[#9a8265] to-[#6c5a46] text-white animate-pulse" : "bg-[#e0d4bf]/40 text-[#9a8265]"}`}
               >
                 {done ? "✓" : active ? "→" : "○"}
               </span>
-              <span className={done || active ? "text-navy-900" : "text-slate-400"}>{stage}</span>
+              <span className={done || active ? "text-[#6c5a46] font-medium" : "text-[#9a8265]"}>{stage}</span>
             </li>
           );
         })}

@@ -1,13 +1,39 @@
 @import "tailwindcss";
 
 @theme {
-  --color-navy-950: #0a0e1a;
-  --color-navy-900: #0f1729;
-  --color-navy-800: #161f38;
+  --color-cream: #f6f1e6;
+  --color-beige: #e0d4bf;
+  --color-sand: #c5b293;
+  --color-taupe: #9a8265;
+  --color-brown: #6c5a46;
+
+  --color-navy-950: #6c5a46;
+  --color-navy-900: #6c5a46;
+  --color-navy-800: #574837;
+}
+
+:root {
+  --cream: #f6f1e6;
+  --beige: #e0d4bf;
+  --sand: #c5b293;
+  --taupe: #9a8265;
+  --brown: #6c5a46;
+
+  --background-gradient: radial-gradient(circle at 10% 10%, rgba(224, 212, 191, 0.45), transparent 45%),
+                        radial-gradient(circle at 90% 90%, rgba(197, 178, 147, 0.3), transparent 45%),
+                        #f6f1e6;
 }
 
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, sans-serif;
-  background-color: #f8fafc;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--background-gradient);
+  background-attachment: fixed;
+  color: #6c5a46;
+  min-height: 100vh;
+}
+
+.bg-cream-canvas {
+  background: var(--background-gradient);
+  background-attachment: fixed;
 }

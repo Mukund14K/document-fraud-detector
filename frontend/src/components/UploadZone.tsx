@@ -49,10 +49,10 @@ export default function UploadZone({ onFileSelected, onError }: UploadZoneProps)
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
       }}
-      className={`cursor-pointer rounded-2xl border-2 border-dashed p-12 text-center transition-all
+      className={`cursor-pointer rounded-2xl border-2 border-dashed p-12 text-center transition-all duration-300
         ${isDragging
-          ? "border-cyan-400 bg-cyan-50 scale-[1.01]"
-          : "border-slate-300 bg-white hover:border-cyan-400 hover:bg-slate-50"}`}
+          ? "border-[#9a8265] bg-[#e0d4bf]/30 scale-[1.01] shadow-md"
+          : "border-[#c5b293]/60 bg-white/80 backdrop-blur-sm hover:border-[#9a8265] hover:bg-[#f6f1e6]/60 shadow-[0_8px_30px_rgba(108,90,70,0.06)] hover:shadow-[0_12px_35px_rgba(108,90,70,0.12)]"}`}
     >
       <input
         ref={inputRef}
@@ -61,17 +61,17 @@ export default function UploadZone({ onFileSelected, onError }: UploadZoneProps)
         className="hidden"
         onChange={handleInputChange}
       />
-      <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center">
-        <svg className="w-7 h-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-gradient-to-br from-[#f6f1e6] to-[#e0d4bf] border border-[#c5b293]/40 flex items-center justify-center shadow-inner">
+        <svg className="w-7 h-7 text-[#6c5a46]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
             d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
       </div>
-      <h3 className="text-lg font-semibold text-navy-900">Upload Identity Document</h3>
-      <p className="text-slate-500 mt-1 text-sm">
+      <h3 className="text-lg font-semibold text-[#6c5a46]">Upload Identity Document</h3>
+      <p className="text-[#9a8265] mt-1 text-sm">
         Upload a passport or visa image for forensic screening.
       </p>
-      <p className="text-slate-400 mt-3 text-xs tracking-wide">
+      <p className="text-[#9a8265]/80 mt-3 text-xs tracking-wide font-medium">
         SUPPORTED FORMATS: JPG • JPEG • PNG
       </p>
     </div>
