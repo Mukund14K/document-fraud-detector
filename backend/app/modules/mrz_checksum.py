@@ -7,7 +7,6 @@ import easyocr
 
 reader = easyocr.Reader(["en"], gpu=False)
 
-# common OCR misreads at digit-only positions
 OCR_DIGIT_CORRECTIONS = {
     "O": "0", "Q": "0", "D": "0",
     "I": "1", "L": "1",
@@ -19,7 +18,6 @@ OCR_DIGIT_CORRECTIONS = {
 
 
 def correct_digit_char(c: str) -> str:
-    """If c is a letter commonly confused with a digit, correct it. Else leave as-is."""
     if c.isdigit():
         return c
     return OCR_DIGIT_CORRECTIONS.get(c, c)
@@ -102,25 +100,50 @@ def parse_td3_mrz(line1: str, line2: str) -> dict:
     }
 
 
+def is_valid_mrz_line(line: str) -> bool:
+    """
+    A real TD3 MRZ line is exactly 44 characters. OCR occasionally drops
+    or adds a character at the edges, so allow a small tolerance.
+
+    Length alone is used as the signal (not '<' count) -- some genuine
+    MRZ lines have very few '<' fillers when optional fields like the
+    personal number are fully used with digits instead of padding.
+    """
+    return 42 <= len(line) <= 46
+
+
 def extract_mrz_lines(image_path: str) -> list:
     raw_results = reader.readtext(image_path, detail=0)
-    mrz_pattern = re.compile(r"^[A-Z0-9<]{20,}$")
+
+    loose_pattern = re.compile(r"^[A-Z0-9<]{15,}$")
     candidates = []
     for line in raw_results:
         cleaned = line.upper().replace(" ", "")
-        if mrz_pattern.match(cleaned):
+        if loose_pattern.match(cleaned):
             candidates.append(cleaned)
-    return candidates
+
+    # now filter down to lines that actually look like real MRZ lines
+    strict_candidates = [line for line in candidates if is_valid_mrz_line(line)]
+
+    return strict_candidates
 
 
 def run_mrz_check(image_path: str) -> dict:
     lines = extract_mrz_lines(image_path)
+
     if len(lines) < 2:
         return {
             "status": "error",
-            "message": f"Could not detect 2 MRZ lines. Found: {lines}",
+            "message": (
+                f"Could not confidently detect 2 valid MRZ lines "
+                f"(found {len(lines)} candidate(s) after strict filtering). "
+                f"This may mean the document has no MRZ, image quality is too "
+                f"low, or the MRZ zone was not fully captured."
+            ),
             "mrz_checksum_passed": False,
+            "candidates_found": lines,
         }
+
     result = parse_td3_mrz(lines[-2], lines[-1])
     result["status"] = "ok"
     result["raw_ocr_lines"] = lines
@@ -130,5 +153,6 @@ def run_mrz_check(image_path: str) -> dict:
 if __name__ == "__main__":
     import sys
     image_path = sys.argv[1] if len(sys.argv) > 1 else "test_image.jpg"
+    import json
     result = run_mrz_check(image_path)
-    print(result)
+    print(json.dumps(result, indent=2))
