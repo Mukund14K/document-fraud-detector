@@ -1,6 +1,28 @@
 ﻿"""
-ICAO 9303 MRZ checksum algorithm + TD3 (passport) parsing.
+ICAO 9303 MRZ checksum algorithm + TD3 (passport) parsing + OCR extraction.
 """
+
+import re
+import easyocr
+
+reader = easyocr.Reader(["en"], gpu=False)
+
+# common OCR misreads at digit-only positions
+OCR_DIGIT_CORRECTIONS = {
+    "O": "0", "Q": "0", "D": "0",
+    "I": "1", "L": "1",
+    "Z": "2",
+    "S": "5",
+    "G": "6",
+    "B": "8",
+}
+
+
+def correct_digit_char(c: str) -> str:
+    """If c is a letter commonly confused with a digit, correct it. Else leave as-is."""
+    if c.isdigit():
+        return c
+    return OCR_DIGIT_CORRECTIONS.get(c, c)
 
 
 def char_value(c: str) -> int:
@@ -30,27 +52,35 @@ def parse_td3_mrz(line1: str, line2: str) -> dict:
     name_field = line1[5:44]
 
     passport_number = line2[0:9]
-    passport_check = line2[9]
+    passport_check_raw = line2[9]
+    passport_check = correct_digit_char(passport_check_raw)
+
     nationality = line2[10:13]
     dob = line2[13:19]
-    dob_check = line2[19]
+    dob_check_raw = line2[19]
+    dob_check = correct_digit_char(dob_check_raw)
+
     sex = line2[20]
     expiry = line2[21:27]
-    expiry_check = line2[27]
+    expiry_check_raw = line2[27]
+    expiry_check = correct_digit_char(expiry_check_raw)
 
     checks = {
         "passport_number": {
             "value": passport_number,
+            "ocr_raw_check_char": passport_check_raw,
             "expected": int(passport_check) if passport_check.isdigit() else None,
             "computed": compute_check_digit(passport_number),
         },
         "date_of_birth": {
             "value": dob,
+            "ocr_raw_check_char": dob_check_raw,
             "expected": int(dob_check) if dob_check.isdigit() else None,
             "computed": compute_check_digit(dob),
         },
         "expiry_date": {
             "value": expiry,
+            "ocr_raw_check_char": expiry_check_raw,
             "expected": int(expiry_check) if expiry_check.isdigit() else None,
             "computed": compute_check_digit(expiry),
         },
@@ -72,24 +102,33 @@ def parse_td3_mrz(line1: str, line2: str) -> dict:
     }
 
 
-def run_test(label, line1, line2):
-    print(f"=== {label} ===")
-    result = parse_td3_mrz(line1, line2)
-    for field, c in result["checks"].items():
-        print(f"{field}: value={c['value']} expected={c['expected']} computed={c['computed']} match={c['match']}")
-    print(f"Overall MRZ checksum passed: {result['mrz_checksum_passed']}")
-    print()
+def extract_mrz_lines(image_path: str) -> list:
+    raw_results = reader.readtext(image_path, detail=0)
+    mrz_pattern = re.compile(r"^[A-Z0-9<]{20,}$")
+    candidates = []
+    for line in raw_results:
+        cleaned = line.upper().replace(" ", "")
+        if mrz_pattern.match(cleaned):
+            candidates.append(cleaned)
+    return candidates
+
+
+def run_mrz_check(image_path: str) -> dict:
+    lines = extract_mrz_lines(image_path)
+    if len(lines) < 2:
+        return {
+            "status": "error",
+            "message": f"Could not detect 2 MRZ lines. Found: {lines}",
+            "mrz_checksum_passed": False,
+        }
+    result = parse_td3_mrz(lines[-2], lines[-1])
+    result["status"] = "ok"
+    result["raw_ocr_lines"] = lines
+    return result
 
 
 if __name__ == "__main__":
-    # Test A: GENUINE - real ICAO reference sample, should all pass
-    genuine_line1 = "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<"
-    genuine_line2 = "L898902C36UTO7408122F1204159ZE184226B<<<<<10"
-    run_test("GENUINE (expected: all pass)", genuine_line1, genuine_line2)
-
-    # Test B: TAMPERED - DOB changed from 740812 to 740813,
-    # but check digit (2) was NOT recalculated -- simulates a forger
-    # editing the visible date without knowing the checksum algorithm
-    tampered_line1 = "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<"
-    tampered_line2 = "L898902C36UTO7408132F1204159ZE184226B<<<<<10"
-    run_test("TAMPERED DOB (expected: date_of_birth match=False)", tampered_line1, tampered_line2)
+    import sys
+    image_path = sys.argv[1] if len(sys.argv) > 1 else "test_image.jpg"
+    result = run_mrz_check(image_path)
+    print(result)
