@@ -69,7 +69,7 @@ SEX_LABELS = [
 ALL_LABEL_PATTERNS = [
     r"\bsurname\b", r"\bsurnane\b", r"\bnom\b", r"\bapellidos?\b", r"\bnachname\b", r"\bcognome\b", r"\bho\b", r"\befternamn\b",
     r"\bgiven\b", r"\bnanies\b", r"\bnarnes\b", r"\bnames?\b", r"\bprenoms?\b", r"\bprénoms?\b", r"\bnombres?\b", r"\bchu\s*dem\b", r"\bten\b", r"\bfornamn\b", r"\bförnamn\b",
-    r"\bpassport\b", r"\bpass\s*(?:no|nr)\b", r"\bdoc\s*no\b", r"\bdocument\b", r"\bso\s*ho\s*chieu\b", r"\bpasaporte\b", r"\bpasseport\b",
+    r"\bpassport\b", r"\bpass\s*(?:no|nr)\b", r"\bdoc\s*no\b", r"\bdocument\b", r"\bso\s*ho\s*chieu\b",
     r"\bdate\s*(?:of|0f)\s*birth\b", r"\bdale\s*(?:of|0f)\s*birth\b", r"\bngay\s*sinh\b", r"\bbirth\b", r"\bdob\b", r"\bfodelsedatum\b", r"\bfödelsedatum\b",
     r"\bdate\s*(?:of|0f)\s*expiry\b", r"\bdate\s*(?:of|0f)\s*expiration\b", r"\bngay\s*het\s*han\b", r"\bexpiry\b", r"\bexpiration\b", r"\bsista\s*giltighetsdag\b",
     r"\bdate\s*(?:of|0f)\s*issue\b", r"\bngay\s*cap\b", r"\butfardad\b", r"\butfärdad\b",
@@ -423,14 +423,14 @@ def _extract_visible_doc_number(
                 if idx != -1:
                     after = line[idx + 1:].strip()
                     m_after = re.search(r"\b[A-Za-z0-9]{7,12}\b", after)
-                    if m_after and not _is_label_noise_line(m_after.group(0)) and re.search(r"\d", m_after.group(0)):
+                    if m_after and not _is_label_noise_line(m_after.group(0)):
                         return m_after.group(0)
                 for j in range(i + 1, min(i + 5, len(text_lines))):
                     cand = text_lines[j]
                     if "<<" in cand or cand.startswith("P<"):
                         break
                     cand_alnum = re.sub(r"[^A-Za-z0-9]", "", cand.upper())
-                    if 7 <= len(cand_alnum) <= 12 and not _is_label_noise_line(cand) and re.search(r"\d", cand_alnum):
+                    if 7 <= len(cand_alnum) <= 12 and not _is_label_noise_line(cand):
                         return cand.strip()
 
     if mrz_doc_num:
@@ -469,18 +469,3 @@ def _extract_visible_sex(text_lines: List[str], labels: List[str]) -> Optional[s
                         return cand.strip()
     return None
 
-
-if __name__ == "__main__":
-    import sys
-    import json
-    
-    # Default to the image you were just looking at in mrz_checksum.py, or let you pass one via CLI
-    test_image_path = sys.argv[1] if len(sys.argv) > 1 else r"e:\document-fraud-detector\sample-documents\genuine\IMG_8763.jpg"
-    
-    print(f"Running field cross-verification on: {test_image_path}")
-    print("Extracting OCR lines and matching against MRZ... This takes a few seconds.\n")
-    
-    res = run_check(test_image_path)
-    
-    # Print out a cleanly formatted JSON result
-    print(json.dumps(res.model_dump(), indent=2))

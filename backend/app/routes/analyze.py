@@ -1,8 +1,8 @@
-﻿"""
+"""
 The /analyze endpoint. MRZ checksum is REAL (role 4's module).
 Risk scoring now uses the real, tested risk_aggregator.
-ELA and field cross-verification are still DUMMY -- swap them in
-the same way once roles 5 and 6 hand off their functions.
+Field cross-verification is REAL (role 6's module).
+ELA is still DUMMY -- swap it in when role 5 hands off.
 """
 
 from fastapi import APIRouter, UploadFile, File
@@ -12,6 +12,7 @@ import uuid
 
 from app.models.schemas import AnalyzeResponse
 from app.modules.mrz_checksum import run_mrz_check
+from app.modules.field_crossverify import run_check as run_crossverify
 from app.modules.risk_aggregator import aggregate
 
 router = APIRouter()
@@ -39,7 +40,7 @@ async def analyze_document(file: UploadFile = File(...)):
         "detail": mrz_result.get("checks", mrz_result.get("message", "No MRZ detected")),
     }
 
-    # ---- DUMMY: still waiting on roles 5 and 6 ----
+    # ---- DUMMY: still waiting on role 5 ----
     ela_passed = True  # placeholder -- role 5 will return a real bool
     ela_check_entry = {
         "name": "Error Level Analysis (Tamper Detection)",
@@ -47,11 +48,13 @@ async def analyze_document(file: UploadFile = File(...)):
         "detail": "Dummy data — waiting on Role 5's module",
     }
 
-    crossverify_passed = True  # placeholder -- role 6 will return real bool or None
+    # ---- REAL: field cross-verification ----
+    crossverify_result = run_crossverify(saved_path)
+    crossverify_passed = crossverify_result.passed  # True, False, or None (skipped)
     crossverify_check_entry = {
-        "name": "Field Cross-Verification",
+        "name": crossverify_result.name,
         "passed": crossverify_passed,
-        "detail": "Dummy data — waiting on Role 6's module",
+        "detail": crossverify_result.detail,
     }
 
     # ---- REAL: risk aggregation ----

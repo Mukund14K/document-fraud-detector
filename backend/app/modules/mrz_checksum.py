@@ -1,11 +1,9 @@
-﻿"""
+"""
 ICAO 9303 MRZ checksum algorithm + TD3 (passport) parsing + OCR extraction.
 """
 
 import re
-import easyocr
-
-reader = easyocr.Reader(["en"], gpu=False)
+from app.utils.ocr_helpers import extract_text_lines, _is_valid_mrz_line
 
 OCR_DIGIT_CORRECTIONS = {
     "O": "0", "Q": "0", "D": "0",
@@ -100,20 +98,8 @@ def parse_td3_mrz(line1: str, line2: str) -> dict:
     }
 
 
-def is_valid_mrz_line(line: str) -> bool:
-    """
-    A real TD3 MRZ line is exactly 44 characters. OCR occasionally drops
-    or adds a character at the edges, so allow a small tolerance.
-
-    Length alone is used as the signal (not '<' count) -- some genuine
-    MRZ lines have very few '<' fillers when optional fields like the
-    personal number are fully used with digits instead of padding.
-    """
-    return 42 <= len(line) <= 46
-
-
 def extract_mrz_lines(image_path: str) -> list:
-    raw_results = reader.readtext(image_path, detail=0)
+    raw_results = extract_text_lines(image_path)
 
     loose_pattern = re.compile(r"^[A-Z0-9<]{15,}$")
     candidates = []
@@ -123,7 +109,7 @@ def extract_mrz_lines(image_path: str) -> list:
             candidates.append(cleaned)
 
     # now filter down to lines that actually look like real MRZ lines
-    strict_candidates = [line for line in candidates if is_valid_mrz_line(line)]
+    strict_candidates = [line for line in candidates if _is_valid_mrz_line(line)]
 
     return strict_candidates
 
@@ -152,7 +138,7 @@ def run_mrz_check(image_path: str) -> dict:
 
 if __name__ == "__main__":
     import sys
-    image_path = sys.argv[1] if len(sys.argv) > 1 else "test_image.jpg"
+    image_path = sys.argv[1] if len(sys.argv) > 1 else "sample-documents/genuine/001926.jpg"
     import json
     result = run_mrz_check(image_path)
     print(json.dumps(result, indent=2))
