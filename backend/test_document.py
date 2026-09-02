@@ -90,6 +90,8 @@ def test_single_document(image_path: str):
         mrz_passed=mrz_passed,
         ela_passed=ela_res.get("passed", True),
         crossverify_passed=cross_res.passed,
+        ela_score=ela_res.get("score", 0.0),
+        is_photo_splice=ela_res.get("is_photo_splice", False),
     )
     print(f"  Verdict      : {risk_res['verdict']}")
     print(f"  Risk Score   : {risk_res['risk_score']:.2f}")

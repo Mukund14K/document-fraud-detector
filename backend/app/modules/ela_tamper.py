@@ -72,9 +72,9 @@ def _detect_photo_splice(img_np: np.ndarray, diff_np: np.ndarray):
     if len(photo_crop.shape) == 3:
         hsv_crop = cv2.cvtColor(photo_crop, cv2.COLOR_BGR2HSV)
         # Saturated blue/cyan background typical of pasted passport photos
-        blue_mask = cv2.inRange(hsv_crop, np.array([90, 100, 70]), np.array([130, 255, 255]))
+        blue_mask = cv2.inRange(hsv_crop, np.array([85, 80, 50]), np.array([135, 255, 255]))
         blue_ratio = np.sum(blue_mask > 0) / float(total_crop_area)
-        if blue_ratio > 0.18:
+        if blue_ratio > 0.10:
             details.append(f"Synthetic solid background overlay in portrait zone ({blue_ratio*100:.1f}%)")
             splice_boxes.append((photo_roi_x1, photo_roi_y1, photo_roi_x2 - photo_roi_x1, photo_roi_y2 - photo_roi_y1))
 
