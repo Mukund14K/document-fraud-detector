@@ -22,5 +22,7 @@ backend/uploads/
 backend/app/static/heatmaps/
 backend/app/static/reports/
 backend/app/static/uploads/
+backend/app/data/history.json
+
 
 

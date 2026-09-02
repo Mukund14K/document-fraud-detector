@@ -16,6 +16,8 @@ from app.modules.ela_tamper import analyze as run_ela_tamper
 from app.modules.field_crossverify import run_check as run_crossverify
 from app.modules.risk_aggregator import aggregate
 from app.modules.pdf_generator import generate_forensic_report
+from app.utils.history_manager import add_history_entry
+
 
 router = APIRouter()
 
@@ -86,6 +88,20 @@ async def analyze_document(file: UploadFile = File(...)):
         )
     except Exception as e:
         pdf_report_path = None
+
+    # ---- 6. Save to History Store ----
+    try:
+        add_history_entry(
+            doc_id=file_id[:8],
+            document_filename=original_filename,
+            verdict=risk_result["verdict"],
+            risk_score=risk_result["risk_score"],
+            checks=all_checks,
+            document_path=document_web_path,
+            pdf_report_path=pdf_report_path,
+        )
+    except Exception as e:
+        print(f"[AnalyzeRoute] Error logging to history: {e}")
 
     return {
         "verdict": risk_result["verdict"],

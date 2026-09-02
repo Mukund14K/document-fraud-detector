@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getHistory,
+  fetchHistoryFromBackend,
   deleteHistoryItem,
   clearHistory,
   type HistoryItem
@@ -34,6 +35,9 @@ export default function HistoryView({ initialSearchQuery = "", onStartAnalysis }
 
   useEffect(() => {
     setHistory(getHistory());
+    fetchHistoryFromBackend().then((data) => {
+      if (data) setHistory(data);
+    });
   }, []);
 
   useEffect(() => {
@@ -42,20 +46,21 @@ export default function HistoryView({ initialSearchQuery = "", onStartAnalysis }
     }
   }, [initialSearchQuery]);
 
-  function handleDelete(id: string) {
-    const updated = deleteHistoryItem(id);
+  async function handleDelete(id: string) {
+    const updated = await deleteHistoryItem(id);
     setHistory(updated);
   }
 
-  function handleClearAll() {
+  async function handleClearAll() {
     const msg = lang === "hi"
       ? "क्या आप निश्चित रूप से सभी फोरेंसिक विश्लेषण इतिहास को साफ़ करना चाहते हैं?"
       : "Are you sure you want to clear all forensic analysis history?";
     if (window.confirm(msg)) {
-      clearHistory();
+      await clearHistory();
       setHistory([]);
     }
   }
+
 
   function handleViewReport(item: HistoryItem) {
     navigate("/results", {

@@ -5,6 +5,7 @@ import os
 from fastapi.staticfiles import StaticFiles
 
 from app.routes.analyze import router as analyze_router
+from app.routes.history import router as history_router
 
 app = FastAPI(title="Document Fraud Detection API")
 
@@ -23,6 +24,8 @@ os.makedirs(os.path.join(STATIC_DIR, "uploads"), exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 app.include_router(analyze_router)
+app.include_router(history_router)
+
 
 
 @app.get("/")

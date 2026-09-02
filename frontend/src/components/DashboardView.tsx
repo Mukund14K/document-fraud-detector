@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getHistory,
+  fetchHistoryFromBackend,
   type HistoryItem
 } from "../utils/historyStore";
 import {
@@ -28,7 +29,11 @@ export default function DashboardView({ onStartAnalysis }: DashboardViewProps) {
 
   useEffect(() => {
     setHistory(getHistory());
+    fetchHistoryFromBackend().then((data) => {
+      if (data) setHistory(data);
+    });
   }, []);
+
 
   const totalScans = history.length;
   const genuineCount = history.filter(
