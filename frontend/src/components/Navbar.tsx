@@ -1,26 +1,29 @@
 // src/components/Navbar.tsx
+import { FileText } from "lucide-react";
+
 export default function Navbar() {
   return (
-    <nav className="sticky top-0 z-50 bg-[#6c5a46]/95 backdrop-blur-md border-b border-[#c5b293]/30 shadow-sm">
-      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+    <header className="w-full bg-white/80 backdrop-blur-md border-b border-[#CACEB5]/50 sticky top-0 z-50 shadow-xs">
+      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        {/* Brand Logo & Tag */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#c5b293] to-[#9a8265] flex items-center justify-center font-bold text-white shadow-sm border border-[#e0d4bf]/40">
-            D
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#4E6158] via-[#45574f] to-[#36453f] flex items-center justify-center text-white shadow-sm">
+            <FileText className="w-5 h-5 text-white" />
           </div>
-          <div>
-            <p className="text-white font-semibold leading-tight">DocuShield AI</p>
-            <p className="text-xs text-[#e0d4bf]/85 leading-tight font-medium">
-              AI-Based Identity &amp; Document Screening
-            </p>
-          </div>
+          <span className="text-lg font-black text-[#1F2532] tracking-tight">
+            DocVerify
+          </span>
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-gradient-to-r from-[#ECE6DA] via-[#f2ece0] to-[#e4ded0] text-[#4E6158] border border-[#CACEB5] tracking-wide shadow-2xs">
+            FORENSIC AI
+          </span>
         </div>
 
-        <div className="hidden md:flex items-center gap-8 text-sm text-[#f6f1e6]/90">
-          <a href="#home" className="hover:text-white transition-colors">Home</a>
-          <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
-          <a href="#security" className="hover:text-white transition-colors">Security</a>
+        {/* Secure System Badge */}
+        <div className="flex items-center gap-2 text-xs font-bold text-[#2F3543]">
+          <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-[#4E6158] to-[#60796e] animate-pulse shadow-xs" />
+          <span>Secure Government System</span>
         </div>
       </div>
-    </nav>
+    </header>
   );
 }
