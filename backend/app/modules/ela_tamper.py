@@ -15,9 +15,8 @@ import cv2
 
 JPEG_RESAVE_QUALITY = 90
 ELA_SCALE = 15
-SUSPICIOUS_MEAN_THRESHOLD = 8.5
-SUSPICIOUS_MAX_THRESHOLD = 65.0
-HOTSPOT_AREA_FRACTION = 0.015
+SEVERE_MEAN_THRESHOLD = 28.0       # Only extremely high global mismatch triggers global flag
+HOTSPOT_AREA_THRESHOLD = 0.02      # Min 2% contiguous hot area required for localized anomaly
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HEATMAP_DIR = os.path.join(BASE_DIR, "static", "heatmaps")
@@ -47,62 +46,55 @@ def _compute_ela_image(pil_img: Image.Image, quality: int = JPEG_RESAVE_QUALITY)
 
 def _detect_photo_splice(img_np: np.ndarray, diff_np: np.ndarray):
     """
-    Detects photo substitution / splicing (e.g. pasted rectangular photos,
-    artificial solid background overlays, sharp rectangular boundary gradients).
-    Returns (splice_detected, list_of_splice_boxes, splice_details)
+    Detects photo substitution / splicing:
+    - Artificial solid background overlay in portrait zone (e.g. bright blue/cyan box)
+    - Sharp rectangular splice border lines in portrait zone
+    - Severe compression layer discrepancy in portrait zone
     """
+    if img_np is None or diff_np is None:
+        return False, [], ""
+
     h, w = diff_np.shape[:2]
     splice_boxes = []
     details = []
 
-    # Passport photo region is typically in the left 10% to 50% width and 15% to 85% height
-    photo_roi_x1, photo_roi_y1 = int(w * 0.03), int(h * 0.12)
-    photo_roi_x2, photo_roi_y2 = int(w * 0.55), int(h * 0.88)
-    
+    # Passport photo region: left 3% to 50% width and 15% to 85% height
+    photo_roi_x1, photo_roi_y1 = int(w * 0.03), int(h * 0.15)
+    photo_roi_x2, photo_roi_y2 = int(w * 0.50), int(h * 0.85)
+
     photo_crop = img_np[photo_roi_y1:photo_roi_y2, photo_roi_x1:photo_roi_x2]
     if photo_crop.size == 0:
         return False, [], ""
 
-    # 1. Edge gradient discontinuity detection (sharp straight borders of pasted photo)
-    gray_crop = cv2.cvtColor(photo_crop, cv2.COLOR_BGR2GRAY) if len(photo_crop.shape) == 3 else photo_crop
-    edges = cv2.Canny(gray_crop, 50, 150)
-    
-    # Find contours in photo region that resemble a pasted rectangular photo
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     total_crop_area = photo_crop.shape[0] * photo_crop.shape[1]
 
-    for c in contours:
-        area = cv2.contourArea(c)
-        if area > (0.10 * total_crop_area):  # large prominent box in photo zone
-            peri = cv2.arcLength(c, True)
-            approx = cv2.approxPolyDP(c, 0.04 * peri, True)
-            if len(approx) == 4:  # roughly rectangular
-                rx, ry, rw, rh = cv2.boundingRect(c)
-                aspect_ratio = rh / float(rw) if rw > 0 else 0
-                if 1.0 <= aspect_ratio <= 1.8:  # standard portrait photo ratio
-                    abs_box = (photo_roi_x1 + rx, photo_roi_y1 + ry, rw, rh)
-                    splice_boxes.append(abs_box)
-                    details.append("Sharp rectangular photo splice boundary detected")
-
-    # 2. Check for unnatural solid background in photo region (e.g. solid cyan/blue background paste)
+    # 1. Check for unnatural solid blue/cyan background in portrait region
     if len(photo_crop.shape) == 3:
         hsv_crop = cv2.cvtColor(photo_crop, cv2.COLOR_BGR2HSV)
-        # Check standard blue/cyan background mask
-        blue_mask = cv2.inRange(hsv_crop, np.array([85, 80, 50]), np.array([135, 255, 255]))
+        # Saturated blue/cyan background typical of pasted passport photos
+        blue_mask = cv2.inRange(hsv_crop, np.array([90, 100, 70]), np.array([130, 255, 255]))
         blue_ratio = np.sum(blue_mask > 0) / float(total_crop_area)
-        if blue_ratio > 0.15:  # more than 15% solid synthetic blue background
+        if blue_ratio > 0.18:
             details.append(f"Synthetic solid background overlay in portrait zone ({blue_ratio*100:.1f}%)")
             splice_boxes.append((photo_roi_x1, photo_roi_y1, photo_roi_x2 - photo_roi_x1, photo_roi_y2 - photo_roi_y1))
 
-    # 3. Local ELA variance discrepancy in photo region vs background
-    photo_ela = diff_np[photo_roi_y1:photo_roi_y2, photo_roi_x1:photo_roi_x2]
-    bg_ela = diff_np[:, int(w * 0.55):]
-    if photo_ela.size > 0 and bg_ela.size > 0:
-        p_std = float(np.std(photo_ela))
-        bg_std = float(np.std(bg_ela))
-        if p_std > 2.2 * (bg_std + 1.0) and p_std > 12.0:
-            details.append("High compression layer divergence in portrait zone")
-            splice_boxes.append((photo_roi_x1, photo_roi_y1, photo_roi_x2 - photo_roi_x1, photo_roi_y2 - photo_roi_y1))
+    # 2. Check for sharp rectangular pasted borders in portrait zone
+    gray_crop = cv2.cvtColor(photo_crop, cv2.COLOR_BGR2GRAY) if len(photo_crop.shape) == 3 else photo_crop
+    edges = cv2.Canny(gray_crop, 80, 200)
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    for c in contours:
+        area = cv2.contourArea(c)
+        if area > (0.15 * total_crop_area):
+            peri = cv2.arcLength(c, True)
+            approx = cv2.approxPolyDP(c, 0.03 * peri, True)
+            if len(approx) == 4:
+                rx, ry, rw, rh = cv2.boundingRect(c)
+                aspect_ratio = rh / float(rw) if rw > 0 else 0
+                if 1.1 <= aspect_ratio <= 1.6:
+                    abs_box = (photo_roi_x1 + rx, photo_roi_y1 + ry, rw, rh)
+                    splice_boxes.append(abs_box)
+                    details.append("Sharp rectangular photo splice border detected")
 
     splice_detected = len(details) > 0
     return splice_detected, splice_boxes, "; ".join(details)
@@ -112,12 +104,13 @@ def _find_hotspots(diff_np: np.ndarray):
     h, w = diff_np.shape
     total_pixels = h * w
 
+    # Otsu thresholding for significant local difference peaks
     _, mask = cv2.threshold(
         diff_np.astype(np.uint8), 0, 255,
         cv2.THRESH_BINARY + cv2.THRESH_OTSU
     )
 
-    kernel = np.ones((5, 5), np.uint8)
+    kernel = np.ones((7, 7), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
@@ -126,7 +119,7 @@ def _find_hotspots(diff_np: np.ndarray):
     hot_area = 0
     for c in contours:
         area = cv2.contourArea(c)
-        if area < (0.001 * total_pixels):
+        if area < (0.005 * total_pixels):
             continue
         x, y, bw, bh = cv2.boundingRect(c)
         boxes.append((x, y, bw, bh))
@@ -167,16 +160,17 @@ def analyze(image_path: str) -> dict:
 
         flagged = (
             is_splice
-            or mean_err > SUSPICIOUS_MEAN_THRESHOLD
-            or (max_err > SUSPICIOUS_MAX_THRESHOLD and hot_fraction > HOTSPOT_AREA_FRACTION)
+            or (hot_fraction >= HOTSPOT_AREA_THRESHOLD and len(boxes) > 0)
+            or mean_err >= SEVERE_MEAN_THRESHOLD
         )
 
         if is_splice:
-            score = 0.88
+            score = 0.85
+        elif flagged:
+            score = min(0.70, (hot_fraction / HOTSPOT_AREA_THRESHOLD) * 0.4 + (mean_err / SEVERE_MEAN_THRESHOLD) * 0.3)
         else:
-            score = min(1.0, (mean_err / (SUSPICIOUS_MEAN_THRESHOLD * 2)) * 0.5
-                        + (hot_fraction / HOTSPOT_AREA_FRACTION) * 0.5)
-            score = round(min(max(score, 0.0), 1.0), 3)
+            score = min(0.20, (mean_err / SEVERE_MEAN_THRESHOLD) * 0.2)
+        score = round(float(score), 3)
 
         heatmap_filename = f"ela_{uuid.uuid4().hex}.png"
         heatmap_disk_path = os.path.join(HEATMAP_DIR, heatmap_filename)
@@ -186,14 +180,13 @@ def analyze(image_path: str) -> dict:
         if is_splice:
             detail = f"Photo Tampering Detected: {splice_detail} (mean ELA: {mean_err:.1f})."
         elif flagged:
-            region_note = f"{len(boxes)} suspicious region(s) detected" if boxes else "elevated compression inconsistency"
             detail = (
                 f"ELA flagged: mean error level {mean_err:.1f}, "
-                f"max {max_err:.1f}, {region_note} "
+                f"{len(boxes)} suspicious region(s) detected "
                 f"({hot_fraction*100:.1f}% of image area)."
             )
         else:
-            detail = f"ELA clean: mean error level {mean_err:.1f}, no significant compression inconsistency found."
+            detail = f"ELA clean: mean error level {mean_err:.1f}, uniform compression layer across document."
 
         return {
             "name": "ela_tamper",

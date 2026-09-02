@@ -123,8 +123,8 @@ def parse_td3_mrz(line1: str, line2: str) -> dict:
     for field, c in checks.items():
         c["match"] = (c["expected"] == c["computed"]) if c["expected"] is not None else False
 
-    # Composite check digit (covers passport_number + check + dob + check + expiry + check + optional + check)
-    composite_data = passport_number + passport_check_raw + dob + dob_check_raw + expiry + expiry_check_raw + optional_data
+    # Composite check digit (covers line2[0:10] + line2[13:20] + line2[21:43] per ICAO 9303 Part 4)
+    composite_data = line2[0:10] + line2[13:20] + line2[21:43]
     computed_composite = compute_check_digit(composite_data)
     if composite_check.isdigit():
         checks["composite"] = {
@@ -136,6 +136,7 @@ def parse_td3_mrz(line1: str, line2: str) -> dict:
         }
 
     all_passed = all(c["match"] for c in checks.values()) and (country_warning is None)
+
 
     return {
         "doc_type": doc_type,
