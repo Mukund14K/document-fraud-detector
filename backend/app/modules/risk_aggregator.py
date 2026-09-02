@@ -1,48 +1,45 @@
-﻿"""
+"""
 Combines MRZ, ELA, and Field Cross-Verification results into a single
-risk score and verdict.
+risk score and verdict with explainable multi-signal reasoning.
 
-Weights: MRZ checksum failure is near-deterministic evidence of tampering,
-so it is weighted heaviest. ELA is a softer signal (scans/lighting cause
-noise). Field cross-verification sits in between.
+Rules:
+- MRZ Checksum or Country Code Failure: Critical security violation -> Fake / High Risk.
+- Photo Substitution / Image Tampering: Physical or digital splice -> Fake / High Risk.
+- Field Mismatch: Visual OCR vs MRZ conflict -> Fake.
+- Genuine: Only when all active forensic checks pass cleanly.
 """
 
-WEIGHTS = {
-    "mrz": 0.5,
-    "ela": 0.25,
-    "field_crossverify": 0.25,
-}
-
-VERDICT_THRESHOLDS = {
-    "fake": 0.6,
-    "suspicious": 0.3,
-}
-
-
-def aggregate(mrz_passed: bool, ela_passed: bool, crossverify_passed) -> dict:
-    """
-    mrz_passed: bool -- True if MRZ checksum validation passed
-    ela_passed: bool -- True if ELA did NOT flag tampering
-    crossverify_passed: bool or None -- True if fields matched,
-                         None if cross-verification was skipped
-    """
+def aggregate(
+    mrz_passed: bool,
+    ela_passed: bool,
+    crossverify_passed,
+    ela_score: float = 0.0,
+    is_photo_splice: bool = False,
+) -> dict:
     score = 0.0
 
+    # 1. MRZ Checksum / Country Code Failure
     if not mrz_passed:
-        score += WEIGHTS["mrz"]
+        score += 0.65
 
+    # 2. ELA Tamper & Photo Substitution
     if not ela_passed:
-        score += WEIGHTS["ela"]
+        if is_photo_splice or ela_score >= 0.70:
+            score += 0.75  # Photo substitution is a direct forgery
+        else:
+            score += 0.45  # Compression anomaly
 
-    # only penalize cross-verify if it actually ran (not skipped)
+    # 3. Field Cross-Verification Mismatch
     if crossverify_passed is False:
-        score += WEIGHTS["field_crossverify"]
+        score += 0.60
 
-    score = round(score, 2)
+    # Cap score between 0.0 and 1.0
+    score = round(min(max(score, 0.0), 1.0), 2)
 
-    if score >= VERDICT_THRESHOLDS["fake"]:
+    # Decision Boundaries
+    if score >= 0.50:
         verdict = "Fake"
-    elif score >= VERDICT_THRESHOLDS["suspicious"]:
+    elif score >= 0.30:
         verdict = "Suspicious"
     else:
         verdict = "Genuine"
@@ -54,22 +51,13 @@ def aggregate(mrz_passed: bool, ela_passed: bool, crossverify_passed) -> dict:
 
 
 if __name__ == "__main__":
-    # Test 1: everything passes -> should be Genuine, low score
-    result1 = aggregate(mrz_passed=True, ela_passed=True, crossverify_passed=True)
-    print(f"Test 1 (all pass): {result1}  -- expected Genuine")
-
-    # Test 2: only MRZ fails -> should be Suspicious (0.5)
-    result2 = aggregate(mrz_passed=False, ela_passed=True, crossverify_passed=True)
-    print(f"Test 2 (MRZ fails): {result2}  -- expected Suspicious, score 0.5")
-
-    # Test 3: MRZ + ELA both fail -> should be Fake (0.75)
-    result3 = aggregate(mrz_passed=False, ela_passed=False, crossverify_passed=True)
-    print(f"Test 3 (MRZ+ELA fail): {result3}  -- expected Fake, score 0.75")
-
-    # Test 4: only ELA fails -> should be Suspicious (0.25 -> actually below 0.3, check)
-    result4 = aggregate(mrz_passed=True, ela_passed=False, crossverify_passed=True)
-    print(f"Test 4 (only ELA fails): {result4}")
-
-    # Test 5: crossverify skipped (None) shouldn't add to score
-    result5 = aggregate(mrz_passed=True, ela_passed=True, crossverify_passed=None)
-    print(f"Test 5 (crossverify skipped): {result5}  -- expected Genuine")
+    # Test 1: all pass -> Genuine (0.0)
+    print("Test 1 (all pass):", aggregate(True, True, True))
+    # Test 2: MRZ fails -> Fake (0.65)
+    print("Test 2 (MRZ fails):", aggregate(False, True, True))
+    # Test 3: Photo splice / high ELA -> Fake (0.75)
+    print("Test 3 (Photo splice):", aggregate(True, False, True, is_photo_splice=True))
+    # Test 4: General ELA anomaly -> Suspicious (0.45)
+    print("Test 4 (ELA anomaly):", aggregate(True, False, True, ela_score=0.4))
+    # Test 5: Field mismatch -> Fake (0.60)
+    print("Test 5 (Field mismatch):", aggregate(True, True, False))

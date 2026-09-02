@@ -72,7 +72,10 @@ async def analyze_document(file: UploadFile = File(...)):
         mrz_passed=mrz_passed,
         ela_passed=ela_passed,
         crossverify_passed=crossverify_passed,
+        ela_score=ela_result.get("score", 0.0),
+        is_photo_splice=ela_result.get("is_photo_splice", False),
     )
+
 
     all_checks = [mrz_check_entry, ela_check_entry, crossverify_check_entry]
 

@@ -30,41 +30,44 @@ MONTH_MAP: Dict[str, int] = {
 
 SURNAME_LABELS = [
     "surname", "surnane", "nom / surname", "nom", "apellidos", "apellido",
-    "nachname", "cognome", "ho /", "ho:", "ho / surname", "efternamn"
+    "nachname", "cognome", "ho /", "ho:", "ho / surname", "efternamn", "last name", "family name"
 ]
 
 GIVEN_NAME_LABELS = [
     "given names", "given name", "given nanies", "given narnes", "given",
-    "prenoms", "prénoms", "prenom", "nombres", "nombre", "vorname",
-    "chu dem va ten", "chu dem vi ten", "chu dem", "ten", "fornamn", "förnamn"
+    "prenoms", "prénoms", "prenom", "nombres", "nombre", "vorname", "vornamen",
+    "chu dem va ten", "chu dem vi ten", "chu dem", "ten", "fornamn", "förnamn", "first name"
 ]
 
 FULL_NAME_LABELS = [
-    "full name", "name / nom", "name:", "nom et prenoms",
-    "nom et prénoms", "nombre completo", "vollstaendiger name"
+    "full name", "name / nom", "name:", "nom et prenoms", "name",
+    "nom et prénoms", "nombre completo", "vollstaendiger name", "complete name"
 ]
 
 DOB_LABELS = [
     "date of birth", "dale of birth", "dale 0f birth", "date 0f birth",
     "ngay sinh", "date de naissance", "fecha de nacimiento", "geburtsdatum",
-    "data di nascita", "fodelsedatum", "födelsedatum", "birth date", "dob", "birth"
+    "data di nascita", "fodelsedatum", "födelsedatum", "birth date", "dob", "birth",
+    "fecha nac", "f. nac"
 ]
 
 EXPIRY_LABELS = [
     "date of expiry", "date of expiration", "ngay het han", "expiry date",
     "expiration date", "date dexpiration", "date d expiration", "date d'expiration",
-    "fecha de caducidad", "sista giltighetsdag", "valable jusqu'au", "expiry", "expiration", "valid until"
+    "fecha de caducidad", "fecha de vencimiento", "sista giltighetsdag", "valable jusqu'au",
+    "expiry", "expiration", "valid until", "gultig bis", "gültig bis"
 ]
 
 DOC_NUM_LABELS = [
     "passport no", "passport na", "passport number", "pass no", "pass nr",
     "so ho chieu", "document no", "doc no", "numero de passeport", "passnummer",
-    "no de passeport", "document number"
+    "no de passeport", "document number", "pasaporte no", "no. de pasaporte", "pass-nr"
 ]
 
 SEX_LABELS = [
     "gioi tinh", "sex / sexe", "sex", "gender", "sexe", "sexo", "geschlecht", "kon", "kön"
 ]
+
 
 ALL_LABEL_PATTERNS = [
     r"\bsurname\b", r"\bsurnane\b", r"\bnom\b", r"\bapellidos?\b", r"\bnachname\b", r"\bcognome\b", r"\bho\b", r"\befternamn\b",
